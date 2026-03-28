@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrinho Doce Rio</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .carrinho-container { margin-top: 30px; padding: 20px; background: #fdf5e6; border-radius: 20px; border: 2px dashed var(--caramelo); }
+        .item-carrinho { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+        .btn-remover { background: var(--alerta); color: white; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
+        .contador-badge { background: var(--caramelo); color: white; padding: 5px 12px; border-radius: 50px; font-size: 0.9rem; margin-left: 10px; }
+        .total-geral { font-size: 1.4rem; font-weight: 700; text-align: right; margin: 20px 0; color: var(--chocolatier); border-top: 2px solid var(--creme); padding-top: 15px; }
+        .config-combo { background: #fff5f8; padding: 15px; border-radius: 15px; margin-top: 15px; border: 1px solid #ffb6c1; }
+        .combo-titulo { color: #d81b60; font-weight: bold; margin-bottom: 10px; display: block; text-transform: uppercase; font-size: 0.8rem; }
+        .msg-ajuda { font-size: 0.85rem; color: #888; margin-bottom: 15px; display: block; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Páscoa Doce Rio <span id="contador-pedidos" class="contador-badge">0</span></h1>
+    <p>O melhor chocolate do Rio de Janeiro</p>
+</header>
+
+<main class="container">
+    <div class="area-pedido">
+        <h2>1. Monte seu Ovo</h2>
+        <span class="msg-ajuda">*Escolha o tipo para ver os tamanhos e preços disponíveis.</span>
+        
+        <form id="formMontagem">
+            <h3>Tipo de Ovo</h3>
+            <select id="tipoOvo" onchange="gerarCamposMontagem()" required>
+                <option value="" disabled selected>Selecione o tipo...</option>
+                <option value="colher">Ovo de Colher</option>
+                <option value="trufado">Ovo Trufado</option>
+                <option value="kids">Mini Ovo Individual (Kids)</option>
+                <option value="combo_kids">Combo Kids (3 Mini Ovos)</option>
+            </select>
+
+            <div id="secao-tamanho" style="display:none;">
+                <h3>Tamanho e Peso</h3>
+                <select id="tamanhoOvo" required>
+                    </select>
+            </div>
+
+            <div id="secao-montagem">
+                </div>
+
+            <div class="acoes" style="margin-top: 30px;">
+                <button type="button" class="btn-voltar" onclick="limparFormulário()">Limpar Escolhas</button>
+                <button type="button" class="btn-comprar" onclick="adicionarAoCarrinho()" style="background: var(--sucesso);">+ Adicionar ao Carrinho</button>
+            </div>
+        </form>
+
+        <div class="total-geral" id="total-geral">Total: R$ 0,00</div>
+
+        <hr style="margin: 40px 0; border: 0; border-top: 2px solid var(--creme);">
+
+        <h2>2. Seu Carrinho</h2>
+        <div id="carrinho-lista" class="carrinho-container">
+            <p style="text-align: center; color: #999;">Seu carrinho está vazio...</p>
+        </div>
+
+        <h3>3. Dados de Entrega</h3>
+        <input type="text" id="nomeCliente" placeholder="Seu Nome Completo" style="margin-bottom: 10px;">
+        <input type="text" id="telCliente" placeholder="WhatsApp (ex: 21 99999-9999)" style="margin-bottom: 10px;">
+        <textarea id="endCliente" placeholder="Endereço completo com ponto de referência" rows="3"></textarea>
+
+        <div class="acoes">
+            <a href="index.html" class="btn-voltar">Voltar</a>
+            <button type="button" class="btn-comprar" onclick="finalizarPedido()">Finalizar no WhatsApp 🐰</button>
+        </div>
+    </div>
+</main>
+
+<script>
+    let carrinho = [];
+
+    const precosETamanhos = {
+        'colher': [
+            { label: 'Pequeno (100g) - R$ 64,99', valor: 64.99 },
+            { label: 'Médio (250g) - R$ 79,99', valor: 79.99 },
+            { label: 'Grande (350g) - R$ 89,99', valor: 89.99 }
+        ],
+        'trufado': [
+            { label: 'Pequeno (100g) - R$ 44,99', valor: 44.99 },
+            { label: 'Médio (250g) - R$ 59,99', valor: 59.99 },
+            { label: 'Grande (350g) - R$ 69,99', valor: 69.99 }
+        ],
+        'kids': [
+            { label: 'Pequeno (75g) - R$ 24,99', valor: 24.99 }
+        ],
+        'combo_kids': [
+            { label: 'Combo 3 Ovos (225g) - R$ 69,99', valor: 69.99 }
+        ]
+    };
+
+    const cardapio = {
+        'colher': { cascas: ['Chocolate', 'Chocolate Branco'], recheios: ['Maracujá', 'Brigadeiro', 'Coco', 'Chocolate', 'Ninho', 'Oreo'], toppings: ['Biscoito Oreo', 'Kinder Bueno', 'KitKat', 'Morango','Docinho', 'M&M','BomBom'] },
+        'trufado': { cascas: ['Chocolate Preto', 'Chocolate Branco'], recheios: ['Maracujá', 'Brigadeiro de Coco', 'Chocolate', 'Ninho', 'Oreo'], toppings: [] },
+        'kids': { cascas: ['Chocolate', 'Chocolate Branco'], recheios: ['Maracujá', 'Brigadeiro', 'Coco', 'Chocolate', 'Ninho', 'Oreo'], toppings: ['Biscoito Oreo', 'Kinder Bueno', 'KitKat', 'Morango', 'Docinho', 'M&M', 'Granulado', 'Bombom', 'Fini'] },
+        'combo_kids': { cascas: ['Chocolate', 'Chocolate Branco'], recheios: ['Maracujá', 'Brigadeiro', 'Coco', 'Chocolate', 'Ninho', 'Oreo'], toppings: ['Biscoito Oreo', 'Kinder Bueno', 'Amendoim', 'Ferrero Rocher', 'KitKat', 'Morango', 'Docinho', 'M&M', 'Granulado', 'Bombom', 'Fini'] }
+    };
+
+    function gerarCamposMontagem() {
+        const tipo = document.getElementById('tipoOvo').value;
+        const secaoTamanho = document.getElementById('secao-tamanho');
+        const selectTamanho = document.getElementById('tamanhoOvo');
+        const secaoMontagem = document.getElementById('secao-montagem');
+        
+        secaoMontagem.innerHTML = '';
+        secaoTamanho.style.display = 'block';
+
+        // 1. Gera os tamanhos específicos do tipo
+        selectTamanho.innerHTML = precosETamanhos[tipo].map((t, i) => `<option value="${i}">${t.label}</option>`).join('');
+
+        // 2. Gera os blocos de montagem (1 ou 3 para combo)
+        const numOvos = (tipo === 'combo_kids') ? 3 : 1;
+        for (let i = 1; i <= numOvos; i++) {
+            const container = document.createElement('div');
+            container.className = (tipo === 'combo_kids') ? 'config-combo' : '';
+            if(tipo === 'combo_kids') container.innerHTML = `<span class="combo-titulo">Personalizar Ovo ${i} do Combo:</span>`;
+
+            container.innerHTML += `<h3>Casca</h3><select class="casca-sel" data-index="${i}">${cardapio[tipo].cascas.map(c => `<option value="${c}">${c}</option>`).join('')}</select>`;
+            container.innerHTML += `<h3>Recheio</h3><select class="recheio-sel" data-index="${i}">${cardapio[tipo].recheios.map(r => `<option value="${r}">${r}</option>`).join('')}</select>`;
+
+            if(cardapio[tipo].toppings.length > 0) {
+                container.innerHTML += `<h3>Escolha até 3 Toppings</h3><div class="grupo-check">${cardapio[tipo].toppings.map(t => `<label class="item-check"><input type="checkbox" name="tops-${i}" value="${t}" onchange="limitTops(${i})"> ${t}</label>`).join('')}</div>`;
+            }
+            secaoMontagem.appendChild(container);
+        }
+    }
+
+    function limitTops(idx) {
+        const marcados = document.querySelectorAll(`input[name="tops-${idx}"]:checked`);
+        document.querySelectorAll(`input[name="tops-${idx}"]`).forEach(cb => {
+            cb.disabled = (marcados.length >= 3 && !cb.checked);
+        });
+    }
+
+    function adicionarAoCarrinho() {
+        const tipoKey = document.getElementById('tipoOvo').value;
+        const tamIdx = document.getElementById('tamanhoOvo').value;
+        if(!tipoKey) return alert("Escolha o tipo de ovo!");
+
+        const configuracoes = [];
+        const numOvos = (tipoKey === 'combo_kids') ? 3 : 1;
+
+        for(let i = 1; i <= numOvos; i++) {
+            const tops = Array.from(document.querySelectorAll(`input[name="tops-${i}"]:checked`)).map(cb => cb.value);
+            configuracoes.push({
+                casca: document.querySelector(`.casca-sel[data-index="${i}"]`).value,
+                recheio: document.querySelector(`.recheio-sel[data-index="${i}"]`).value,
+                toppings: tops
+            });
+        }
+
+        carrinho.push({
+            tipoNome: document.getElementById('tipoOvo').options[document.getElementById('tipoOvo').selectedIndex].text,
+            tamanhoLabel: precosETamanhos[tipoKey][tamIdx].label,
+            preco: precosETamanhos[tipoKey][tamIdx].valor,
+            configs: configuracoes
+        });
+
+        renderCarrinho();
+        limparFormulário();
+    }
+
+    function renderCarrinho() {
+        const lista = document.getElementById('carrinho-lista');
+        let total = 0;
+        
+        if(carrinho.length === 0) {
+            lista.innerHTML = '<p style="text-align: center; color: #999;">Seu carrinho está vazio...</p>';
+            document.getElementById('total-geral').innerText = "Total: R$ 0,00";
+            document.getElementById('contador-pedidos').innerText = "0";
+            return;
+        }
+
+        lista.innerHTML = carrinho.map((item, idx) => {
+            total += item.preco;
+            return `<div class="item-carrinho">
+                <div>
+                    <strong>${item.tipoNome}</strong><br>
+                    <small style="color:var(--caramelo)">${item.tamanhoLabel}</small><br>
+                    ${item.configs.map((c, i) => `<small>• OVO ${i+1}: ${c.casca} | ${c.recheio} [${c.toppings.join(', ') || 'Sem toppings'}]</small><br>`).join('')}
+                </div>
+                <div style="text-align:right">
+                    R$ ${item.preco.toFixed(2).replace('.', ',')}<br>
+                    <button class="btn-remover" onclick="remover(${idx})">Remover</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('total-geral').innerText = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+        document.getElementById('contador-pedidos').innerText = carrinho.length;
+    }
+
+    function remover(idx) { carrinho.splice(idx, 1); renderCarrinho(); }
+
+    function limparFormulário() {
+        document.getElementById('formMontagem').reset();
+        document.getElementById('secao-montagem').innerHTML = '';
+        document.getElementById('secao-tamanho').style.display = 'none';
+    }
+
+    function finalizarPedido() {
+        const nome = document.getElementById('nomeCliente').value;
+        const end = document.getElementById('endCliente').value;
+        const tel = document.getElementById('telCliente').value;
+        
+        if(carrinho.length === 0 || !nome || !end || !tel) return alert("Por favor, preencha seus dados e adicione itens ao carrinho!");
+
+        let msg = `*NOVO PEDIDO - PÁSCOA DOCE RIO* 🐰🍫\n\n`;
+        msg += `*Cliente:* ${nome}\n*WhatsApp:* ${tel}\n*Endereço:* ${end}\n`;
+        msg += `\n*ITENS DO CARRINHO:*`;
+
+        carrinho.forEach((item, idx) => {
+            msg += `\n\n✅ ${idx+1}. ${item.tipoNome}\n   ${item.tamanhoLabel}`;
+            item.configs.forEach((c, i) => {
+                msg += `\n   👉 OVO ${i+1}: ${c.casca} | ${c.recheio}`;
+                if(c.toppings.length) msg += `\n      Tops: ${c.toppings.join(', ')}`;
+            });
+        });
+
+        msg += `\n\n---`;
+        msg += `\n*${document.getElementById('total-geral').innerText}*`;
+
+        window.open(`https://wa.me/5521980843202?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+</script>
+</body>
+</html>
